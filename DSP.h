@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 // Constexpr | Const: Expressions
 
 // ------- Wave Header Constexpr Variables -------
@@ -33,9 +34,9 @@
 // Character size
 #define CHAR_SIZE 4
 #define PACKET_SIZE 64
-#define VOLUME_INTERPOLATION 0.5
-#define MAIN_VOLUME 10
-#define CUTOFF_FREQUENCY 1000
+#define VOLUME_INTERPOLATION 0.5f
+#define MAIN_VOLUME 1
+#define CUTOFF_FREQUENCY 100
 
 // ------- AudioStream Setup Variables -------
 #define NUM_SAMPLES 1024
@@ -96,60 +97,69 @@ typedef struct {
 
     // Size of audio data
     uint32_t subChunk2Size;
-
-    // Actual data
-    int32_t *data;
-    //uint8_t* data;
 } WavHeader;
 
 //------- FilterState Struct -------
 typedef struct {
     // Filter States
-    double inputX1;
-    double inputX2;
-    double inputX3;
-    double outputY1;
-    double outputY2;
+    float inputX1;
+    float inputX2;
+    float inputX3;
+    float outputY1;
+    float outputY2;
 
     // Filter Coefficients
-    double b1;
-    double b2;
-    double a0;
-    double a1;
-    double a2;
+    float b1;
+    float b2;
+    float a0;
+    float a1;
+    float a2;
 } FilterState;
+
+//------- AudioState Struct -------
+typedef struct {
+    FilterState filterState[NUM_CHANNELS];
+    float phase[NUM_CHANNELS];
+    float gainState[NUM_CHANNELS];
+    float cutoffFreq;
+    float sineWave[NUM_SAMPLES];
+    float phaseIncrement[NUM_CHANNELS];
+} AudioState;
 
 // ------- Function Setup  -------
 // Combines all the functions below here
-void setup(WavHeader *header, float mainVol, float cutoffFreq);
+void setup(WavHeader *header, const int32_t *audioData);
 
 // Sets up wav file
 void setupWavFormat(WavHeader *header);
 
 // Sets up audio data - (Interleaving, Filtering, Audio Packet, Volume)
-void setupAudioStream(WavHeader *header, FilterState *state, float mainVol, float cutoffFreq);
+void setupAudioStream(WavHeader *header, int32_t *audioData, AudioState *audioState, uint16_t packetCount);
 
 // ------- Control Functions  -------
 // Sets the coefficients based on frequency
-void setFilter(FilterState *state, float frequency);
+void setFilter(FilterState *filterState, float frequency);
 
 // Sets gain (Converts db to linear)
-double setVolume(double gain);
+float setVolume(float gain, float *gainState);
 
 // ------- Helper Functions  -------
 // Lookup table for efficiency
-void lookupSine(double *sineWave, float mainVol);
+void lookupSine(float *sineWave, float mainVol);
 
 // Linear Interpolation for lookup table
-double linearInterpolation(double phaseFrac, u_int16_t phaseInt,const double *sineTable);
+float linearInterpolation(float phaseFrac, u_int16_t phaseInt, const float *sineTable);
 
 // Resets state after use
-void filterReset(FilterState *state);
+void filterReset(FilterState *filterState);
 
 // Deals with the filter states
-double processFilter(FilterState *state, float input);
+float processFilter(FilterState *filterState, float input);
 
 // Writes audio to Wav file
-void writeWavFile(WavHeader *header);
+void writeWavFile(const WavHeader *header, const int32_t *audioData);
+
+// Reset audio state and setup Filter Coeff
+void audioStateReset(AudioState *audioState);
 
 #endif
